@@ -18,7 +18,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import numpy as np
-from default_configs import DefaultConfigs
+from config.default_configs import DefaultConfigs
 
 class configs(DefaultConfigs):
 
@@ -28,9 +28,9 @@ class configs(DefaultConfigs):
         #    Preprocessing      #
         #########################
 
-        self.root_dir = '/path/to/raw/data'
-        self.raw_data_dir = '{}/data_nrrd'.format(self.root_dir)
-        self.pp_dir = '{}/pp_norm'.format(self.root_dir)
+        self.root_dir = '/home/gregor/networkdrives/E130-Personal/Goetz/Datenkollektive/Lungendaten/Nodules_LIDC_IDRI'
+        self.raw_data_dir = '{}/new_nrrd'.format(self.root_dir)
+        self.pp_dir = '/media/gregor/HDD2TB/data/lidc/lidc_mdt'
         self.target_spacing = (0.7, 0.7, 1.25)
 
         #########################
@@ -41,7 +41,7 @@ class configs(DefaultConfigs):
         # one out of [2, 3]. dimension the model operates in.
         self.dim = 2
 
-        # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn', 'detection_unet'].
+        # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
         self.model = 'retina_unet'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
@@ -50,17 +50,17 @@ class configs(DefaultConfigs):
         self.select_prototype_subset = None
 
         # path to preprocessed data.
-        self.pp_name = 'lidc_preprocessed_for_G2'
+        self.pp_name = 'lidc_mdt'
         self.input_df_name = 'info_df.pickle'
-        self.pp_data_path = '/mnt/HDD2TB/Documents/data/lidc/{}'.format(self.pp_name)
+        self.pp_data_path = '/media/gregor/HDD2TB/data/lidc/{}'.format(self.pp_name)
         self.pp_test_data_path = self.pp_data_path #change if test_data in separate folder.
 
         # settings for deployment in cloud.
         if server_env:
             # path to preprocessed data.
-            self.pp_name = 'pp_fg_slices'
+            self.pp_name = 'lidc_mdt_npz'
             self.crop_name = 'pp_fg_slices_packed'
-            self.pp_data_path = '/path/to/preprocessed/data/{}/{}'.format(self.pp_name, self.crop_name)
+            self.pp_data_path = '/datasets/datasets_ramien/lidc_exp/data/{}'.format(self.pp_name)
             self.pp_test_data_path = self.pp_data_path
             self.select_prototype_subset = None
 
@@ -85,7 +85,7 @@ class configs(DefaultConfigs):
         self.batch_sample_slack = 0.2
 
         # set 2D network to operate in 3D images.
-        self.merge_2D_to_3D_preds = True
+        self.merge_2D_to_3D_preds = self.dim == 2
 
         # feed +/- n neighbouring slices into channel dimension. set to None for no context.
         self.n_3D_context = None
@@ -122,6 +122,13 @@ class configs(DefaultConfigs):
             self.max_val_patients = 50  # if 'None' iterates over entire val_set once.
         if self.val_mode == 'val_sampling':
             self.num_val_batches = 50
+
+        # set dynamic_lr_scheduling to True to apply LR scheduling with below settings.
+        self.dynamic_lr_scheduling = True
+        self.lr_decay_factor = 0.5
+        self.scheduling_patience = int(self.num_train_batches * self.batch_size / 6000)
+        self.scheduling_criterion = 'malignant_ap'
+        self.scheduling_mode = 'min' if "loss" in self.scheduling_criterion else 'max'
 
         #########################
         #   Testing / Plotting  #

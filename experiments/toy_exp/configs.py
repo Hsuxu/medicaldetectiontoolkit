@@ -18,7 +18,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import numpy as np
-from default_configs import DefaultConfigs
+from config.default_configs import DefaultConfigs
 
 class configs(DefaultConfigs):
 
@@ -28,7 +28,7 @@ class configs(DefaultConfigs):
         #    Preprocessing      #
         #########################
 
-        self.root_dir = '/mnt/HDD2TB/Documents/data/mdt_toy'
+        self.root_dir = '/home/gregor/datasets/toy_mdt'
 
         #########################
         #         I/O           #
@@ -38,20 +38,19 @@ class configs(DefaultConfigs):
         # one out of [2, 3]. dimension the model operates in.
         self.dim = 2
 
-        # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn', 'detection_unet'].
-        self.model = 'detection_unet'
+        # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
+        self.model = 'retina_net'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
         # int [0 < dataset_size]. select n patients from dataset for prototyping.
         self.select_prototype_subset = None
         self.hold_out_test_set = True
-        self.n_train_data = 1000
+        self.n_train_data = 2500
 
         # choose one of the 3 toy experiments described in https://arxiv.org/pdf/1811.08661.pdf
         # one of ['donuts_shape', 'donuts_pattern', 'circles_scale'].
-        toy_mode = 'donuts_shape'
-
+        toy_mode = 'donuts_shape_noise'
 
         # path to preprocessed data.
         self.input_df_name = 'info_df.pickle'
@@ -63,7 +62,7 @@ class configs(DefaultConfigs):
         # settings for deployment in cloud.
         if server_env:
             # path to preprocessed data.
-            pp_root_dir = '/path/to/data'
+            pp_root_dir = '/datasets/datasets_ramien/toy_exp/data'
             self.pp_name = os.path.join(toy_mode, 'train')
             self.pp_data_path = os.path.join(pp_root_dir, self.pp_name)
             self.pp_test_name = os.path.join(toy_mode, 'test')
@@ -115,8 +114,8 @@ class configs(DefaultConfigs):
         #  Schedule / Selection #
         #########################
 
-        self.num_epochs = 100
-        self.num_train_batches = 200 if self.dim == 2 else 200
+        self.num_epochs = 22
+        self.num_train_batches = 100 if self.dim == 2 else 200
         self.batch_size = 20 if self.dim == 2 else 8
 
         self.do_validation = True
@@ -127,6 +126,13 @@ class configs(DefaultConfigs):
             self.max_val_patients = None  # if 'None' iterates over entire val_set once.
         if self.val_mode == 'val_sampling':
             self.num_val_batches = 50
+
+        # set dynamic_lr_scheduling to True to apply LR scheduling with below settings.
+        self.dynamic_lr_scheduling = True
+        self.lr_decay_factor = 0.5
+        self.scheduling_patience = int(self.num_train_batches * self.batch_size / 2400)
+        self.scheduling_criterion = 'malignant_ap'
+        self.scheduling_mode = 'min' if "loss" in self.scheduling_criterion else 'max'
 
         #########################
         #   Testing / Plotting  #
@@ -236,7 +242,7 @@ class configs(DefaultConfigs):
         self.return_masks_in_test = False
 
         # set number of proposal boxes to plot after each epoch.
-        self.n_plot_rpn_props = 5 if self.dim == 2 else 30
+        self.n_plot_rpn_props = 0 if self.dim == 2 else 0
 
         # number of classes for head networks: n_foreground_classes + 1 (background)
         self.head_classes = 3
@@ -258,7 +264,7 @@ class configs(DefaultConfigs):
         self.n_rpn_features = 512 if self.dim == 2 else 128
 
         # anchor ratios and strides per position in feature maps.
-        self.rpn_anchor_ratios = [0.5, 1, 2]
+        self.rpn_anchor_ratios = [0.5, 1., 2.]
         self.rpn_anchor_stride = 1
 
         # Threshold for first stage (RPN) non-maximum suppression (NMS):  LOWER == HARDER SELECTION

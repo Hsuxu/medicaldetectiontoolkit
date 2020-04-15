@@ -27,14 +27,13 @@ import pandas as pd
 import pickle
 import time
 import subprocess
-import utils.dataloader_utils as dutils
+import src.utils.dataloader_utils as dutils
 
 # batch generator tools from https://github.com/MIC-DKFZ/batchgenerators
 from batchgenerators.dataloading.data_loader import SlimDataLoaderBase
 from batchgenerators.transforms.spatial_transforms import MirrorTransform as Mirror
 from batchgenerators.transforms.abstract_transforms import Compose
 from batchgenerators.dataloading.multi_threaded_augmenter import MultiThreadedAugmenter
-from batchgenerators.dataloading import SingleThreadedAugmenter
 from batchgenerators.transforms.spatial_transforms import SpatialTransform
 from batchgenerators.transforms.crop_and_pad_transforms import CenterCropTransform
 from batchgenerators.transforms.utility_transforms import ConvertSegToBoundingBoxCoordinates
@@ -51,13 +50,14 @@ def get_train_generators(cf, logger):
     all_data = load_dataset(cf, logger)
     all_pids_list = np.unique([v['pid'] for (k, v) in all_data.items()])
 
-    if not cf.created_fold_id_pickle:
+    splits_file = os.path.join(cf.exp_dir, 'fold_ids.pickle')
+    if not os.path.exists(splits_file) and not cf.created_fold_id_pickle:
         fg = dutils.fold_generator(seed=cf.seed, n_splits=cf.n_cv_splits, len_data=len(all_pids_list)).get_fold_names()
-        with open(os.path.join(cf.exp_dir, 'fold_ids.pickle'), 'wb') as handle:
+        with open(splits_file, 'wb') as handle:
             pickle.dump(fg, handle)
         cf.created_fold_id_pickle = True
     else:
-        with open(os.path.join(cf.exp_dir, 'fold_ids.pickle'), 'rb') as handle:
+        with open(splits_file, 'rb') as handle:
             fg = pickle.load(handle)
 
     train_ix, val_ix, test_ix, _ = fg[cf.fold]
@@ -124,7 +124,7 @@ def load_dataset(cf, logger, subset_ixs=None, pp_data_path=None, pp_name=None):
         pp_name = cf.pp_name
     if cf.server_env:
         copy_data = True
-        target_dir = os.path.join('/ssd', cf.slurm_job_id, pp_name, cf.crop_name)
+        target_dir = os.path.join(cf.data_dest, pp_name)
         if not os.path.exists(target_dir):
             cf.data_source_dir = pp_data_path
             os.makedirs(target_dir)
@@ -456,6 +456,30 @@ def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
         source_dir, target_dir), shell=True)
     dutils.unpack_dataset(target_dir)
     copied_files = os.listdir(target_dir)
-    logger.info("copying and unpacking data set finsihed : {} files in target dir: {}. took {} sec".format(
+    logger.info("copying and unpacking data set finished : {} files in target dir: {}. took {} sec".format(
         len(copied_files), target_dir, np.round(time.time() - start_time, 0)))
 
+
+if __name__=="__main__":
+    import src.utils.exp_utils as utils
+    from configs import configs
+
+    total_stime = time.time()
+
+
+    cf = configs()
+    cf.created_fold_id_pickle = False
+    cf.exp_dir = "experiments/dev/"
+    cf.plot_dir = cf.exp_dir + "plots"
+    os.makedirs(cf.exp_dir, exist_ok=True)
+    cf.fold = 0
+    logger = utils.get_logger(cf.exp_dir)
+    batch_gen = get_train_generators(cf, logger)
+
+    train_batch = next(batch_gen["train"])
+
+
+    mins, secs = divmod((time.time() - total_stime), 60)
+    h, mins = divmod(mins, 60)
+    t = "{:d}h:{:02d}m:{:02d}s".format(int(h), int(mins), int(secs))
+    print("{} total runtime: {}".format(os.path.split(__file__)[1], t))

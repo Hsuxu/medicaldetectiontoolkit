@@ -20,7 +20,8 @@ After applying preprocessing, images are saved as numpy arrays and the meta info
 as a line in the dataframe saved as info_df.pickle.
 '''
 
-import os
+import os, sys
+from pathlib import Path
 import SimpleITK as sitk
 import numpy as np
 from multiprocessing import Pool
@@ -30,8 +31,9 @@ from skimage.transform import resize
 import subprocess
 import pickle
 
-import configs
-cf = configs.configs()
+PROJECT_ROOT = Path(__file__).absolute().parent.parent.parent
+sys.path.append(str(PROJECT_ROOT))
+import src.utils.exp_utils as utils
 
 
 
@@ -128,13 +130,16 @@ def aggregate_meta_info(exp_dir):
 
 if __name__ == "__main__":
 
+    cf_file = utils.import_module("cf", "configs.py")
+    cf = cf_file.configs()
+
     paths = [os.path.join(cf.raw_data_dir, ii) for ii in os.listdir(cf.raw_data_dir)]
 
     if not os.path.exists(cf.pp_dir):
         os.mkdir(cf.pp_dir)
 
-    pool = Pool(processes=12)
-    p1 = pool.map(pp_patient, enumerate(paths), chunksize=1)
+    pool = Pool(processes=os.cpu_count())
+    p1 = pool.map(pp_patient, enumerate(paths))
     pool.close()
     pool.join()
     # for i in enumerate(paths):

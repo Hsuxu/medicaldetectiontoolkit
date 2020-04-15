@@ -23,8 +23,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from scipy.ndimage.measurements import label as lb
 import numpy as np
-import utils.exp_utils as utils
-import utils.model_utils as mutils
+import src.utils.exp_utils as utils
+import src.utils.model_utils as mutils
 
 
 class net(nn.Module):

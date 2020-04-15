@@ -21,14 +21,13 @@ import pandas as pd
 import pickle
 import time
 import subprocess
-import utils.dataloader_utils as dutils
+import src.utils.dataloader_utils as dutils
 
 # batch generator tools from https://github.com/MIC-DKFZ/batchgenerators
 from batchgenerators.dataloading.data_loader import SlimDataLoaderBase
 from batchgenerators.transforms.spatial_transforms import MirrorTransform as Mirror
 from batchgenerators.transforms.abstract_transforms import Compose
 from batchgenerators.dataloading.multi_threaded_augmenter import MultiThreadedAugmenter
-from batchgenerators.dataloading import SingleThreadedAugmenter
 from batchgenerators.transforms.spatial_transforms import SpatialTransform
 from batchgenerators.transforms.crop_and_pad_transforms import CenterCropTransform
 from batchgenerators.transforms.utility_transforms import ConvertSegToBoundingBoxCoordinates
@@ -105,7 +104,7 @@ def load_dataset(cf, logger, subset_ixs=None, pp_data_path=None, pp_name=None):
         pp_name = cf.pp_name
     if cf.server_env:
         copy_data = True
-        target_dir = os.path.join('/ssd', cf.slurm_job_id, pp_name)
+        target_dir = os.path.join(cf.data_dest, pp_name)
         if not os.path.exists(target_dir):
             cf.data_source_dir = pp_data_path
             os.makedirs(target_dir)
@@ -268,8 +267,6 @@ class PatientBatchIterator(SlimDataLoaderBase):
 
         return batch_2D
 
-
-
 def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
 
 
@@ -278,25 +275,31 @@ def copy_and_unpack_data(logger, pids, fold_dir, source_dir, target_dir):
         for pid in pids:
             handle.write('{}.npy\n'.format(pid))
 
-    subprocess.call('rsync -av --files-from {} {} {}'.format(os.path.join(fold_dir, 'file_list.txt'),
+    subprocess.call('rsync -ahv --files-from {} {} {}'.format(os.path.join(fold_dir, 'file_list.txt'),
         source_dir, target_dir), shell=True)
     # dutils.unpack_dataset(target_dir)
     copied_files = os.listdir(target_dir)
-    logger.info("copying and unpacking data set finsihed : {} files in target dir: {}. took {} sec".format(
+    logger.info("copying and unpacking data set finished : {} files in target dir: {}. took {} sec".format(
         len(copied_files), target_dir, np.round(time.time() - start_time, 0)))
 
 if __name__=="__main__":
-    import utils.exp_utils as utils
-    from .configs import Configs
+    import src.utils.exp_utils as utils
 
     total_stime = time.time()
+    cf_file = utils.import_module("cf", "configs.py")
+    cf = cf_file.configs()
 
-
-    cf = Configs()
-    logger = utils.get_logger(0)
+    logger = utils.get_logger("dev")
     batch_gen = get_train_generators(cf, logger)
 
     train_batch = next(batch_gen["train"])
+    pids = []
+    total = 100
+    for i in range(total):
+        print("\r producing batch {}/{}.".format(i, total), end="", flush=True)
+        train_batch = next(batch_gen["train"])
+        pids.append(train_batch["pid"])
+    print()
 
 
     mins, secs = divmod((time.time() - total_stime), 60)
