@@ -18,7 +18,8 @@
 
 import os
 
-class DefaultConfigs:
+
+class BaseConfig:
 
     def __init__(self, model, server_env=None, dim=2):
         self.server_env = server_env
@@ -33,22 +34,21 @@ class DefaultConfigs:
 
         # some default paths.
         self.backbone_path = '../src/models/backbone.py'
-        self.source_dir = os.path.dirname(os.path.realpath(__file__)) #current dir.
+        self.source_dir = os.path.dirname(os.path.realpath(__file__))  # current dir.
         self.input_df_name = 'info_df.pickle'
         self.model_path = 'models/{}.py'.format(self.model)
 
         if server_env:
             self.source_dir = '/home/jaegerp/code/mamma_code/medicaldetectiontoolkit'
 
-
         #########################
         #      Data Loader      #
         #########################
 
-        #random seed for fold_generator and batch_generator.
+        # random seed for fold_generator and batch_generator.
         self.seed = 0
 
-        #number of threads for multithreaded batch generation.
+        # number of threads for multithreaded batch generation.
         self.n_workers = os.cpu_count() - 1
 
         # if True, segmentation losses learn all categories, else only foreground vs. background.
@@ -75,7 +75,6 @@ class DefaultConfigs:
 
         # number of folds in cross validation.
         self.n_cv_splits = 5
-
 
         # number of probabilistic samples in validation.
         self.n_probabilistic_samples = None
@@ -129,12 +128,10 @@ class DefaultConfigs:
 
         # if True, unmolds masks in Mask R-CNN to full-res for plotting/monitoring.
         self.return_masks_in_val = False
-        self.return_masks_in_test = False # needed if doing instance segmentation. evaluation not yet implemented.
+        self.return_masks_in_test = False  # needed if doing instance segmentation. evaluation not yet implemented.
 
         # add P6 to Feature Pyramid Network.
         self.sixth_pooling = False
 
         # for probabilistic detection
         self.n_latent_dims = 0
-
-

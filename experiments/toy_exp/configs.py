@@ -16,11 +16,13 @@
 
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import numpy as np
-from config.default_configs import DefaultConfigs
+from config.default_configs import BaseConfig
 
-class configs(DefaultConfigs):
+
+class configs(BaseConfig):
 
     def __init__(self, server_env=None):
 
@@ -34,14 +36,13 @@ class configs(DefaultConfigs):
         #         I/O           #
         #########################
 
-
         # one out of [2, 3]. dimension the model operates in.
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn'].
         self.model = 'retina_net'
 
-        DefaultConfigs.__init__(self, self.model, server_env, self.dim)
+        BaseConfig.__init__(self, self.model, server_env, self.dim)
 
         # int [0 < dataset_size]. select n patients from dataset for prototyping.
         self.select_prototype_subset = None
@@ -96,15 +97,14 @@ class configs(DefaultConfigs):
         if self.n_3D_context is not None and self.dim == 2:
             self.n_channels *= (self.n_3D_context * 2 + 1)
 
-
         #########################
         #      Architecture      #
         #########################
 
         self.start_filts = 48 if self.dim == 2 else 18
         self.end_filts = self.start_filts * 4 if self.dim == 2 else self.start_filts * 2
-        self.res_architecture = 'resnet50' # 'resnet101' , 'resnet50'
-        self.norm = None # one of None, 'instance_norm', 'batch_norm'
+        self.res_architecture = 'resnet50'  # 'resnet101' , 'resnet50'
+        self.norm = None  # one of None, 'instance_norm', 'batch_norm'
         self.weight_decay = 0
 
         # one of 'xavier_uniform', 'xavier_normal', or 'kaiming_normal', None (=default = 'kaiming_uniform')
@@ -121,7 +121,7 @@ class configs(DefaultConfigs):
         self.do_validation = True
         # decide whether to validate on entire patient volumes (like testing) or sampled patches (like training)
         # the former is morge accurate, while the latter is faster (depending on volume size)
-        self.val_mode = 'val_patient' # one of 'val_sampling' , 'val_patient'
+        self.val_mode = 'val_patient'  # one of 'val_sampling' , 'val_patient'
         if self.val_mode == 'val_patient':
             self.max_val_patients = None  # if 'None' iterates over entire val_set once.
         if self.val_mode == 'val_sampling':
@@ -150,7 +150,7 @@ class configs(DefaultConfigs):
         self.patient_class_of_interest = 2  # patient metrics are only plotted for one class.
         self.ap_match_ious = [0.1]  # list of ious to be evaluated for ap-scoring.
 
-        self.model_selection_criteria = ['benign_ap', 'malignant_ap'] # criteria to average over for saving epochs.
+        self.model_selection_criteria = ['benign_ap', 'malignant_ap']  # criteria to average over for saving epochs.
         self.min_det_thresh = 0.1  # minimum confidence value to select predictions for evaluation.
 
         # threshold for clustering predictions together (wcs = weighted cluster scoring).
@@ -165,29 +165,28 @@ class configs(DefaultConfigs):
         #   Data Augmentation   #
         #########################
 
-        self.da_kwargs={
-        'do_elastic_deform': True,
-        'alpha':(0., 1500.),
-        'sigma':(30., 50.),
-        'do_rotation':True,
-        'angle_x': (0., 2 * np.pi),
-        'angle_y': (0., 0),
-        'angle_z': (0., 0),
-        'do_scale': True,
-        'scale':(0.8, 1.1),
-        'random_crop':False,
-        'rand_crop_dist':  (self.patch_size[0] / 2. - 3, self.patch_size[1] / 2. - 3),
-        'border_mode_data': 'constant',
-        'border_cval_data': 0,
-        'order_data': 1
+        self.da_kwargs = {
+            'do_elastic_deform': True,
+            'alpha': (0., 1500.),
+            'sigma': (30., 50.),
+            'do_rotation': True,
+            'angle_x': (0., 2 * np.pi),
+            'angle_y': (0., 0),
+            'angle_z': (0., 0),
+            'do_scale': True,
+            'scale': (0.8, 1.1),
+            'random_crop': False,
+            'rand_crop_dist': (self.patch_size[0] / 2. - 3, self.patch_size[1] / 2. - 3),
+            'border_mode_data': 'constant',
+            'border_cval_data': 0,
+            'order_data': 1
         }
 
         if self.dim == 3:
             self.da_kwargs['do_elastic_deform'] = False
             self.da_kwargs['angle_x'] = (0, 0.0)
-            self.da_kwargs['angle_y'] = (0, 0.0) #must be 0!!
+            self.da_kwargs['angle_y'] = (0, 0.0)  # must be 0!!
             self.da_kwargs['angle_z'] = (0., 2 * np.pi)
-
 
         #########################
         #   Add model specifics #
@@ -200,8 +199,7 @@ class configs(DefaultConfigs):
          'retina_net': self.add_mrcnn_configs,
          'retina_unet': self.add_mrcnn_configs,
          'prob_detector': self.add_mrcnn_configs,
-        }[self.model]()
-
+         }[self.model]()
 
     def add_det_unet_configs(self):
 
@@ -271,8 +269,8 @@ class configs(DefaultConfigs):
         self.rpn_nms_threshold = 0.7 if self.dim == 2 else 0.7
 
         # loss sampling settings.
-        self.rpn_train_anchors_per_image = 2  #per batch element
-        self.train_rois_per_image = 2 #per batch element
+        self.rpn_train_anchors_per_image = 2  # per batch element
+        self.train_rois_per_image = 2  # per batch element
         self.roi_positive_ratio = 0.5
         self.anchor_matching_iou = 0.7
 
