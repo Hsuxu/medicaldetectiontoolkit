@@ -37,7 +37,6 @@ import src.utils.model_utils as mutils
 """
 
 
-
 def inspect_info_df(pp_dir):
     """ use your debugger to look into the info df of a pp dir.
     :param pp_dir: preprocessed-data directory
@@ -140,11 +139,11 @@ class CheckNMSImplementation(unittest.TestCase):
         """
         threshold = 0.3
         boxes = torch.tensor([
-            [20, 30, 80, 130], #0 reference (needs to have highest score)
-            [30, 40, 70, 120], #1 IoU 0.35
-            [10, 50, 90,  80], #2 IoU 0.11
-            [40, 20, 75, 135], #3 IoU 0.34
-            [30, 40, 70, 120], #4 IoU 0.35 again but with lower score
+            [20, 30, 80, 130],  # 0 reference (needs to have highest score)
+            [30, 40, 70, 120],  # 1 IoU 0.35
+            [10, 50, 90, 80],  # 2 IoU 0.11
+            [40, 20, 75, 135],  # 3 IoU 0.34
+            [30, 40, 70, 120],  # 4 IoU 0.35 again but with lower score
         ]).cuda().float()
 
         scores = torch.tensor([0.71, 0.94, 1.0, 0.82, 0.11]).cuda()
@@ -152,10 +151,8 @@ class CheckNMSImplementation(unittest.TestCase):
         # expected: keep == [1, 2]
         keep = self.nms_ext.nms(boxes, scores, threshold)
 
-        diff = np.setdiff1d(keep.cpu().numpy(), [1,2])
-        assert len(diff) == 0, "expected: {}, received: {}.".format([1,2], keep)
-
-
+        diff = np.setdiff1d(keep.cpu().numpy(), [1, 2])
+        assert len(diff) == 0, "expected: {}, received: {}.".format([1, 2], keep)
 
     def test(self, n_cases=200, box_count=30, threshold=0.5):
         # dynamically import module so that it doesn't affect other tests if import fails
@@ -167,12 +164,13 @@ class CheckNMSImplementation(unittest.TestCase):
         seed0 = np.random.randint(50)
         print("NMS test progress (done/total box configurations) 2D:", end="\n")
         for i in tqdm.tqdm(range(n_cases)):
-            self.single_case(count=box_count, dim=2, threshold=threshold, seed=seed0+i)
+            self.single_case(count=box_count, dim=2, threshold=threshold, seed=seed0 + i)
         print("NMS test progress (done/total box configurations) 3D:", end="\n")
         for i in tqdm.tqdm(range(n_cases)):
-            self.single_case(count=box_count, dim=3, threshold=threshold, seed=seed0+i)
+            self.single_case(count=box_count, dim=3, threshold=threshold, seed=seed0 + i)
 
         return
+
 
 class CheckRoIAlignImplementation(unittest.TestCase):
 
@@ -246,32 +244,35 @@ class CheckRoIAlignImplementation(unittest.TestCase):
         # dummy input
         self.ra_ext = utils.import_module("ra_ext", 'custom_extensions/roi_align/roi_align.py')
         exp = 6
-        pool_size = (2,2)
-        fmap = torch.arange(exp**2).view(exp,exp).unsqueeze(0).unsqueeze(0).cuda().type(dtype=torch.float32)
+        pool_size = (2, 2)
+        fmap = torch.arange(exp ** 2).view(exp, exp).unsqueeze(0).unsqueeze(0).cuda().type(dtype=torch.float32)
 
-        boxes = torch.tensor([[1., 1., 5., 5.]]).cuda()/exp
-        ind = torch.tensor([0.]*len(boxes)).cuda().type(torch.float32)
+        boxes = torch.tensor([[1., 1., 5., 5.]]).cuda() / exp
+        ind = torch.tensor([0.] * len(boxes)).cuda().type(torch.float32)
         y_exp, x_exp = fmap.shape[2:]  # exp = expansion
         boxes.mul_(torch.tensor([y_exp, x_exp, y_exp, x_exp], dtype=torch.float32).cuda())
         boxes = torch.cat((ind.unsqueeze(1), boxes), dim=1)
         aligned_tv = tv.ops.roi_align(fmap, boxes, output_size=pool_size, sampling_ratio=-1)
         aligned = self.ra_ext.roi_align_2d(fmap, boxes, output_size=pool_size, sampling_ratio=-1)
 
-        boxes_3d = torch.cat((boxes, torch.tensor([[-1.,1.]]*len(boxes)).cuda()), dim=1)
+        boxes_3d = torch.cat((boxes, torch.tensor([[-1., 1.]] * len(boxes)).cuda()), dim=1)
         fmap_3d = fmap.unsqueeze(dim=-1)
-        pool_size = (*pool_size,1)
-        ra_object = self.ra_ext.RoIAlign(output_size=pool_size, spatial_scale=1.,)
+        pool_size = (*pool_size, 1)
+        ra_object = self.ra_ext.RoIAlign(output_size=pool_size, spatial_scale=1., )
         aligned_3d = ra_object(fmap_3d, boxes_3d)
 
         # expected_res = torch.tensor([[[[10.5000, 12.5000], # this would be with an alternative grid-point setting
         #                                [22.5000, 24.5000]]]]).cuda()
         expected_res = torch.tensor([[[[14., 16.],
                                        [26., 28.]]]]).cuda()
-        expected_res_3d = torch.tensor([[[[[14.],[16.]],
-                                          [[26.],[28.]]]]]).cuda()
-        assert torch.all(aligned==expected_res), "2D RoIAlign check vs. specific example failed. res: {}\n expected: {}\n".format(aligned, expected_res)
-        assert torch.all(aligned_3d==expected_res_3d), "3D RoIAlign check vs. specific example failed. res: {}\n expected: {}\n".format(aligned_3d, expected_res_3d)
-
+        expected_res_3d = torch.tensor([[[[[14.], [16.]],
+                                          [[26.], [28.]]]]]).cuda()
+        assert torch.all(
+            aligned == expected_res), "2D RoIAlign check vs. specific example failed. res: {}\n expected: {}\n".format(
+            aligned, expected_res)
+        assert torch.all(
+            aligned_3d == expected_res_3d), "3D RoIAlign check vs. specific example failed. res: {}\n expected: {}\n".format(
+            aligned_3d, expected_res_3d)
 
     def test(self):
         # dynamically import module so that it doesn't affect other tests if import fails
@@ -280,17 +281,19 @@ class CheckRoIAlignImplementation(unittest.TestCase):
         self.specific_example_check()
 
         # 2d test
-        #self.check_2d()
+        # self.check_2d()
 
         # 3d test
         self.check_3d()
 
         return
 
+
 class VerifyFoldSplits(unittest.TestCase):
     """ Check, for a single fold_ids file, i.e., for a single experiment, if the assigned folds (assignment of data
         identifiers) is actually incongruent. No overlaps between folds are allowed for a correct cross validation.
     """
+
     @staticmethod
     def verify_fold_ids(splits):
         """
@@ -308,7 +311,8 @@ class VerifyFoldSplits(unittest.TestCase):
                     if j > i:
                         inter = np.intersect1d(ids1, ids2)
                         if len(inter) > 0:
-                            raise Exception("Fold {}: Split {} and {} intersect by pids {}".format(fold_ix, i, j, inter))
+                            raise Exception(
+                                "Fold {}: Split {} and {} intersect by pids {}".format(fold_ix, i, j, inter))
 
             # check val and test ids across folds
             val_ids = split_ids[1]
@@ -319,7 +323,8 @@ class VerifyFoldSplits(unittest.TestCase):
                 inter_val = np.intersect1d(val_ids, other_val_ids)
                 inter_test = np.intersect1d(test_ids, other_test_ids)
                 if len(inter_test) > 0:
-                    raise Exception("Folds {} and {}: Test splits intersect by pids {}".format(f_ix, other_f_ix, inter_test))
+                    raise Exception(
+                        "Folds {} and {}: Test splits intersect by pids {}".format(f_ix, other_f_ix, inter_test))
                 if len(inter_val) > 0:
                     raise Exception(
                         "Folds {} and {}: Val splits intersect by pids {}".format(f_ix, other_f_ix, inter_val))
@@ -332,7 +337,7 @@ class VerifyFoldSplits(unittest.TestCase):
         self.verify_fold_ids(splits)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     stime = time.time()
 
     unittest.main()

@@ -46,7 +46,8 @@ def train(logger):
     net = model.net(cf, logger).cuda()
     optimizer = torch.optim.Adam(net.parameters(), lr=cf.learning_rate[0], weight_decay=cf.weight_decay)
     if cf.dynamic_lr_scheduling:
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode=cf.scheduling_mode, factor=cf.lr_decay_factor,
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode=cf.scheduling_mode,
+                                                               factor=cf.lr_decay_factor,
                                                                patience=cf.scheduling_patience)
 
     model_selector = utils.ModelSelector(cf, logger)
@@ -84,8 +85,8 @@ def train(logger):
             logger.info('tr. batch {0}/{1} (ep. {2}) fw {3:.2f}s / bw {4:.2f} s / total {5:.2f} s || '
                         .format(bix + 1, cf.num_train_batches, epoch, tic_bw - tic_fw,
                                 time.time() - tic_bw, time.time() - tic_fw) + results_dict['logger_string'])
-            #train_results_list.append([results_dict['boxes'], batch['pid']])
-            train_results_list.append(({k:v for k,v in results_dict.items() if k != "seg_preds"}, batch["pid"]))
+            # train_results_list.append([results_dict['boxes'], batch['pid']])
+            train_results_list.append(({k: v for k, v in results_dict.items() if k != "seg_preds"}, batch["pid"]))
 
         _, monitor_metrics['train'] = train_evaluator.evaluate_predictions(train_results_list, monitor_metrics['train'])
 
@@ -103,8 +104,8 @@ def train(logger):
                         results_dict = val_predictor.predict_patient(batch)
                     elif cf.val_mode == 'val_sampling':
                         results_dict = net.train_forward(batch, is_validation=True)
-                    #val_results_list.append([results_dict['boxes'], batch['pid']])
-                    val_results_list.append(({k:v for k,v in results_dict.items() if k != "seg_preds"}, batch["pid"]))
+                    # val_results_list.append([results_dict['boxes'], batch['pid']])
+                    val_results_list.append(({k: v for k, v in results_dict.items() if k != "seg_preds"}, batch["pid"]))
 
                 _, monitor_metrics['val'] = val_evaluator.evaluate_predictions(val_results_list, monitor_metrics['val'])
                 model_selector.run_model_selection(net, optimizer, monitor_metrics, epoch)
@@ -116,7 +117,7 @@ def train(logger):
 
             epoch_time = time.time() - start_time
             logger.info('trained epoch {}: took {:.2f} s ({:.2f} s train / {:.2f} s val)'.format(
-                epoch, epoch_time, train_time, epoch_time-train_time))
+                epoch, epoch_time, train_time, epoch_time - train_time))
             batch = next(batch_gen['val_sampling'])
             results_dict = net.train_forward(batch, is_validation=True)
             logger.info('plotting predictions from validation sampling.')
@@ -127,7 +128,8 @@ def train(logger):
             scheduler.step(monitor_metrics["val"][cf.scheduling_criterion][-1])
         else:
             for param_group in optimizer.param_groups:
-                param_group['lr'] = cf.learning_rate[epoch-1]
+                param_group['lr'] = cf.learning_rate[epoch - 1]
+
 
 def test(logger):
     """
@@ -147,15 +149,16 @@ if __name__ == '__main__':
     stime = time.time()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--mode', type=str,  default='train_test',
+    parser.add_argument('-m', '--mode', type=str, default='train_test',
                         help='one out of: train / test / train_test / analysis / create_exp')
-    parser.add_argument('-f','--folds', nargs='+', type=int, default=None,
+    parser.add_argument('-f', '--folds', nargs='+', type=int, default=None,
                         help='None runs over all folds in CV. otherwise specify list of folds.')
     parser.add_argument('--exp_dir', type=str, default='/path/to/experiment/directory',
                         help='path to experiment dir. will be created if non existent.')
     parser.add_argument('--server_env', default=False, action='store_true',
                         help='change IO settings to deploy models on a cluster.')
-    parser.add_argument('--data_dest', type=str, default=None, help="path to final data folder if different from config.")
+    parser.add_argument('--data_dest', type=str, default=None,
+                        help="path to final data folder if different from config.")
     parser.add_argument('--use_stored_settings', default=False, action='store_true',
                         help='load configs from existing exp_dir instead of source dir. always done for testing, '
                              'but can be set to true to do the same for training. useful in job scheduler environment, '
@@ -174,10 +177,10 @@ if __name__ == '__main__':
 
         cf = utils.prep_exp(args.exp_source, args.exp_dir, args.server_env, args.use_stored_settings)
         if args.dev:
-            folds = [0,1]
-            cf.batch_size, cf.num_epochs, cf.min_save_thresh, cf.save_n_models = 3 if cf.dim==2 else 1, 1, 0, 1
+            folds = [0, 1]
+            cf.batch_size, cf.num_epochs, cf.min_save_thresh, cf.save_n_models = 3 if cf.dim == 2 else 1, 1, 0, 1
             cf.num_train_batches, cf.num_val_batches, cf.max_val_patients = 5, 1, 1
-            cf.test_n_epochs =  cf.save_n_models
+            cf.test_n_epochs = cf.save_n_models
             cf.max_test_patients = 1
 
         cf.data_dest = args.data_dest
@@ -204,8 +207,9 @@ if __name__ == '__main__':
 
         cf = utils.prep_exp(args.exp_source, args.exp_dir, args.server_env, is_training=False, use_stored_settings=True)
         if args.dev:
-            folds = [0,1]
-            cf.test_n_epochs =  1; cf.max_test_patients = 1
+            folds = [0, 1]
+            cf.test_n_epochs = 1;
+            cf.max_test_patients = 1
 
         cf.data_dest = args.data_dest
         logger = utils.get_logger(cf.exp_dir, cf.server_env)

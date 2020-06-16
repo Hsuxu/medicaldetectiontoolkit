@@ -15,6 +15,7 @@
 # ==============================================================================
 
 import matplotlib
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -23,7 +24,7 @@ import os
 from copy import deepcopy
 
 
-def plot_batch_prediction(batch, results_dict, cf, outfile= None):
+def plot_batch_prediction(batch, results_dict, cf, outfile=None):
     """
     plot the input images, ground truth annotations, and output predictions of a batch. If 3D batch, plots a 2D projection
     of one randomly sampled element (patient) in the batch. Since plotting all slices of patient volume blows up costs of
@@ -55,7 +56,7 @@ def plot_batch_prediction(batch, results_dict, cf, outfile= None):
         if len(gt_boxes) > 0:
             z_cuts = [np.max((int(gt_boxes[0][4]) - 5, 0)), np.min((int(gt_boxes[0][5]) + 5, data.shape[0]))]
         else:
-            z_cuts = [data.shape[0]//2 - 5, int(data.shape[0]//2 + np.min([10, data.shape[0]//2]))]
+            z_cuts = [data.shape[0] // 2 - 5, int(data.shape[0] // 2 + np.min([10, data.shape[0] // 2]))]
         p_roi_results = roi_results[patient_ix]
         roi_results = [[] for _ in range(data.shape[0])]
 
@@ -63,7 +64,7 @@ def plot_batch_prediction(batch, results_dict, cf, outfile= None):
         for box in p_roi_results:
             b = box['box_coords']
             # dismiss negative anchor slices.
-            slices = np.round(np.unique(np.clip(np.arange(b[4], b[5] + 1), 0, data.shape[0]-1)))
+            slices = np.round(np.unique(np.clip(np.arange(b[4], b[5] + 1), 0, data.shape[0] - 1)))
             for s in slices:
                 roi_results[int(s)].append(box)
                 roi_results[int(s)][-1]['box_coords'] = b[:4]
@@ -81,7 +82,6 @@ def plot_batch_prediction(batch, results_dict, cf, outfile= None):
     except:
         raise Warning('Shapes of arrays to plot not in agreement!'
                       'Shapes {} vs. {} vs {}'.format(data.shape, segs.shape, seg_preds.shape))
-
 
     show_arrays = np.concatenate([data, segs, seg_preds, data[:, 0][:, None]], axis=1).astype(float)
     approx_figshape = (4 * show_arrays.shape[0], 4 * show_arrays.shape[1])
@@ -111,24 +111,25 @@ def plot_batch_prediction(batch, results_dict, cf, outfile= None):
             plt.imshow(arr, cmap=cmap, vmin=vmin, vmax=vmax)
             if m >= (data.shape[1]):
                 for box in roi_results[b]:
-                    if box['box_type'] != 'patient_tn_box': # don't plot true negative dummy boxes.
+                    if box['box_type'] != 'patient_tn_box':  # don't plot true negative dummy boxes.
                         coords = box['box_coords']
                         if box['box_type'] == 'det':
                             # dont plot background preds or low confidence boxes.
                             if box['box_pred_class_id'] > 0 and box['box_score'] > 0.1:
                                 plot_text = True
                                 score = np.max(box['box_score'])
-                                score_text = '{}|{:.0f}'.format(box['box_pred_class_id'], score*100)
+                                score_text = '{}|{:.0f}'.format(box['box_pred_class_id'], score * 100)
                                 # if prob detection: plot only boxes from correct sampling instance.
                                 if 'sample_id' in box.keys() and int(box['sample_id']) != m - data.shape[1] - 2:
-                                        continue
+                                    continue
                                 # if prob detection: plot reconstructed boxes only in corresponding line.
-                                if not 'sample_id' in box.keys() and  m != data.shape[1] + 1:
+                                if not 'sample_id' in box.keys() and m != data.shape[1] + 1:
                                     continue
 
                                 score_font_size = 7
                                 text_color = 'w'
-                                text_x = coords[1] + 10*(box['box_pred_class_id'] -1) #avoid overlap of scores in plot.
+                                text_x = coords[1] + 10 * (
+                                            box['box_pred_class_id'] - 1)  # avoid overlap of scores in plot.
                                 text_y = coords[2] + 5
                             else:
                                 continue
@@ -144,10 +145,14 @@ def plot_batch_prediction(batch, results_dict, cf, outfile= None):
 
                         color_var = 'extra_usage' if 'extra_usage' in list(box.keys()) else 'box_type'
                         color = cf.box_color_palette[box[color_var]]
-                        plt.plot([coords[1], coords[3]], [coords[0], coords[0]], color=color, linewidth=1, alpha=1) # up
-                        plt.plot([coords[1], coords[3]], [coords[2], coords[2]], color=color, linewidth=1, alpha=1) # down
-                        plt.plot([coords[1], coords[1]], [coords[0], coords[2]], color=color, linewidth=1, alpha=1) # left
-                        plt.plot([coords[3], coords[3]], [coords[0], coords[2]], color=color, linewidth=1, alpha=1) # right
+                        plt.plot([coords[1], coords[3]], [coords[0], coords[0]], color=color, linewidth=1,
+                                 alpha=1)  # up
+                        plt.plot([coords[1], coords[3]], [coords[2], coords[2]], color=color, linewidth=1,
+                                 alpha=1)  # down
+                        plt.plot([coords[1], coords[1]], [coords[0], coords[2]], color=color, linewidth=1,
+                                 alpha=1)  # left
+                        plt.plot([coords[3], coords[3]], [coords[0], coords[2]], color=color, linewidth=1,
+                                 alpha=1)  # right
                         if plot_text:
                             plt.text(text_x, text_y, score_text, fontsize=score_font_size, color=text_color)
 
@@ -156,7 +161,6 @@ def plot_batch_prediction(batch, results_dict, cf, outfile= None):
     except:
         raise Warning('failed to save plot.')
     plt.close(fig)
-
 
 
 class TrainingPlot_2Panel():
@@ -190,7 +194,8 @@ class TrainingPlot_2Panel():
             fig.savefig(self.file_name + '_{}'.format(figure_ix))
 
 
-def detection_monitoring_plot(ax1, metrics, exp_name, color_palette, epoch, figure_ix, separate_values_dict, do_validation):
+def detection_monitoring_plot(ax1, metrics, exp_name, color_palette, epoch, figure_ix, separate_values_dict,
+                              do_validation):
     # todo remove since replaced by tensorboard?
     monitor_values_keys = metrics['train']['monitor_values'][1][0].keys()
     separate_values = [v for fig_ix in separate_values_dict.values() for v in fig_ix]
@@ -199,7 +204,6 @@ def detection_monitoring_plot(ax1, metrics, exp_name, color_palette, epoch, figu
         plot_keys += [k for k in metrics['train'].keys() if k != 'monitor_values']
     else:
         plot_keys = separate_values_dict[figure_ix]
-
 
     x = np.arange(1, epoch + 1)
 
@@ -240,14 +244,15 @@ def plot_prediction_hist(label_list, pred_list, type_list, outfile):
     if 0 in labels:
         plt.hist(preds[labels == 0], alpha=0.3, color='g', range=(0, 1), bins=50, label='false pos.')
     if 1 in labels:
-        plt.hist(preds[labels == 1], alpha=0.3, color='b', range=(0, 1), bins=50, label='true pos. (false neg. @ score=0)')
+        plt.hist(preds[labels == 1], alpha=0.3, color='b', range=(0, 1), bins=50,
+                 label='true pos. (false neg. @ score=0)')
 
     if type_list is not None:
         fp_count = type_list.count('det_fp')
         fn_count = type_list.count('det_fn')
         tp_count = type_list.count('det_tp')
         pos_count = fn_count + tp_count
-        title += ' tp:{} fp:{} fn:{} pos:{}'. format(tp_count, fp_count, fn_count, pos_count)
+        title += ' tp:{} fp:{} fn:{} pos:{}'.format(tp_count, fp_count, fn_count, pos_count)
 
     plt.legend()
     plt.title(title)
@@ -258,7 +263,6 @@ def plot_prediction_hist(label_list, pred_list, type_list, outfile):
 
 
 def plot_stat_curves(stats, outfile):
-
     for c in ['roc', 'prc']:
         plt.figure()
         for s in stats:

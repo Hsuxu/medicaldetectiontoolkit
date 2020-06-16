@@ -47,6 +47,7 @@ class Predictor:
     - dissmisses any ground truth boxes returned by the model (happens in validation mode, patch-based groundtruth)
     - if provided by data loader, adds 3D ground truth to the final predictions to be passed to the evaluator.
     """
+
     def __init__(self, cf, net, logger, mode):
 
         self.cf = cf
@@ -75,7 +76,6 @@ class Predictor:
             self.n_ens = cf.test_n_epochs
             if self.cf.test_aug:
                 self.n_ens *= 4
-
 
     def predict_patient(self, batch):
         """
@@ -118,7 +118,6 @@ class Predictor:
 
         return results_dict
 
-
     def predict_test_set(self, batch_gen, return_results=True):
         """
         wrapper around test method, which loads multiple (or one) epoch parameters (temporal ensembling), loops through
@@ -160,8 +159,6 @@ class Predictor:
                     results_dict = self.predict_patient(batch)
                     dict_of_patient_results[batch['pid']]['results_list'].append({"boxes": results_dict['boxes']})
 
-
-
         self.logger.info('finished predicting test set. starting post-processing of predictions.')
         results_per_patient = []
 
@@ -201,16 +198,19 @@ class Predictor:
             self.logger.info('applying wcs to test set predictions with iou = {} and n_ens = {}.'.format(
                 self.cf.wcs_iou, self.n_ens))
             pool = Pool(processes=6)
-            mp_inputs = [[ii[0], ii[1], self.cf.class_dict, self.cf.wcs_iou, self.n_ens] for ii in final_patient_box_results]
+            mp_inputs = [[ii[0], ii[1], self.cf.class_dict, self.cf.wcs_iou, self.n_ens] for ii in
+                         final_patient_box_results]
             final_patient_box_results = pool.map(apply_wbc_to_patient, mp_inputs, chunksize=1)
             pool.close()
             pool.join()
 
             # merge 2D boxes to 3D cubes. (if model predicts 2D but evaluation is run in 3D)
             if self.cf.merge_2D_to_3D_preds:
-                self.logger.info('applying 2Dto3D merging to test set predictions with iou = {}.'.format(self.cf.merge_3D_iou))
+                self.logger.info(
+                    'applying 2Dto3D merging to test set predictions with iou = {}.'.format(self.cf.merge_3D_iou))
                 pool = Pool(processes=6)
-                mp_inputs = [[ii[0], ii[1], self.cf.class_dict, self.cf.merge_3D_iou] for ii in final_patient_box_results]
+                mp_inputs = [[ii[0], ii[1], self.cf.class_dict, self.cf.merge_3D_iou] for ii in
+                             final_patient_box_results]
                 final_patient_box_results = pool.map(merge_2D_to_3D_preds_per_patient, mp_inputs, chunksize=1)
                 pool.close()
                 pool.join()
@@ -221,7 +221,6 @@ class Predictor:
                 results_per_patient[ix][0]["boxes"] = final_patient_box_results[ix][0]
 
             return results_per_patient
-
 
     def load_saved_predictions(self, apply_wbc=False):
         """
@@ -263,7 +262,7 @@ class Predictor:
                 else:
                     self.logger.info("Skipping fold {} since no saved predictions found.".format(fold))
             box_results_list = []
-            for res_dict, pid in results_list: #without filtering gt out:
+            for res_dict, pid in results_list:  # without filtering gt out:
                 box_results_list.append((res_dict['boxes'], pid))
 
             da_factor = 4 if self.cf.test_aug else 1
@@ -289,14 +288,12 @@ class Predictor:
             pool.close()
             pool.join()
 
-
         for ix in range(len(results_list)):
             assert np.all(
                 results_list[ix][1] == box_results_list[ix][1]), "pid mismatch between loaded and aggregated results"
             results_list[ix][0]["boxes"] = box_results_list[ix][0]
 
         return results_list  # holds (results_dict, pid)
-
 
     def data_aug_forward(self, batch):
         """
@@ -391,7 +388,6 @@ class Predictor:
                 pass
         return results_dict
 
-
     def spatial_tiling_forward(self, batch, patch_crops=None, n_aug='0'):
         """
         forwards batch to batch_tiling_forward method and receives and returns a dictionary with results.
@@ -419,7 +415,7 @@ class Predictor:
             # counts patch instances per pixel-position.
             patch_overlap_map = np.zeros_like(out_seg_preds, dtype='uint8')
 
-            #unmold segmentation outputs. loop over patches.
+            # unmold segmentation outputs. loop over patches.
             for pix, pc in enumerate(patch_crops):
                 if self.cf.dim == 3:
                     out_seg_preds[:, :, pc[0]:pc[1], pc[2]:pc[3], pc[4]:pc[5]] += patches_dict['seg_preds'][pix][None]
@@ -455,13 +451,15 @@ class Predictor:
                          zip(box_centers, np.array(self.cf.patch_size) / 2)])
                     if self.cf.dim == 3:
                         c += np.array([pc[0], pc[2], pc[0], pc[2], pc[4], pc[4]])
-                        int_c = [int(np.floor(ii)) if ix%2 == 0 else int(np.ceil(ii)) for ix, ii in enumerate(c)]
-                        box['box_n_overlaps'] = np.mean(patch_overlap_map[:, :, int_c[1]:int_c[3], int_c[0]:int_c[2], int_c[4]:int_c[5]])
+                        int_c = [int(np.floor(ii)) if ix % 2 == 0 else int(np.ceil(ii)) for ix, ii in enumerate(c)]
+                        box['box_n_overlaps'] = np.mean(
+                            patch_overlap_map[:, :, int_c[1]:int_c[3], int_c[0]:int_c[2], int_c[4]:int_c[5]])
                         results_dict['boxes'][0].append(box)
                     else:
                         c += np.array([pc[0], pc[2], pc[0], pc[2]])
                         int_c = [int(np.floor(ii)) if ix % 2 == 0 else int(np.ceil(ii)) for ix, ii in enumerate(c)]
-                        box['box_n_overlaps'] = np.mean(patch_overlap_map[pc[4], :, int_c[1]:int_c[3], int_c[0]:int_c[2]])
+                        box['box_n_overlaps'] = np.mean(
+                            patch_overlap_map[pc[4], :, int_c[1]:int_c[3], int_c[0]:int_c[2]])
                         results_dict['boxes'][pc[4]].append(box)
 
             if self.mode == 'val':
@@ -481,7 +479,6 @@ class Predictor:
                     box['patch_id'] = self.rank_ix + '_' + n_aug
 
         return results_dict
-
 
     def batch_tiling_forward(self, batch):
         """
@@ -521,7 +518,6 @@ class Predictor:
                 else:
                     chunk_dicts += [self.net.test_forward(b, return_masks=self.cf.return_masks_in_test)]
 
-
             results_dict = {}
             # flatten out batch elements from chunks ([chunk, chunk] -> [b, b, b, b, ...])
             results_dict['boxes'] = [item for d in chunk_dicts for item in d['boxes']]
@@ -541,7 +537,6 @@ class Predictor:
         return results_dict
 
 
-
 def apply_wbc_to_patient(inputs):
     """
     wrapper around prediction box consolidation: weighted cluster scoring (wcs). processes a single patient.
@@ -559,7 +554,8 @@ def apply_wbc_to_patient(inputs):
 
         for cl in list(class_dict.keys()):
 
-            boxes = [(ix, box) for ix, box in enumerate(b) if (box['box_type'] == 'det' and box['box_pred_class_id'] == cl)]
+            boxes = [(ix, box) for ix, box in enumerate(b) if
+                     (box['box_type'] == 'det' and box['box_pred_class_id'] == cl)]
             box_coords = np.array([b[1]['box_coords'] for b in boxes])
             box_scores = np.array([b[1]['box_score'] for b in boxes])
             box_center_factor = np.array([b[1]['box_patch_center_factor'] for b in boxes])
@@ -573,13 +569,12 @@ def apply_wbc_to_patient(inputs):
 
                 for boxix in range(len(keep_scores)):
                     out_patient_results_list[bix].append({'box_type': 'det', 'box_coords': keep_coords[boxix],
-                                             'box_score': keep_scores[boxix], 'box_pred_class_id': cl})
+                                                          'box_score': keep_scores[boxix], 'box_pred_class_id': cl})
 
         # add gt boxes back to new output list.
         out_patient_results_list[bix].extend([box for box in b if box['box_type'] == 'gt'])
 
     return [out_patient_results_list, pid]
-
 
 
 def merge_2D_to_3D_preds_per_patient(inputs):
@@ -599,7 +594,7 @@ def merge_2D_to_3D_preds_per_patient(inputs):
         # collect box predictions over batch dimension (slices) and store slice info as slice_ids.
         for bix, b in enumerate(in_patient_results_list):
             det_boxes = [(ix, box) for ix, box in enumerate(b) if
-                     (box['box_type'] == 'det' and box['box_pred_class_id'] == cl)]
+                         (box['box_type'] == 'det' and box['box_pred_class_id'] == cl)]
             boxes += det_boxes
             slice_ids += [bix] * len(det_boxes)
 
@@ -619,10 +614,9 @@ def merge_2D_to_3D_preds_per_patient(inputs):
                                              'box_score': box_scores[kix], 'box_pred_class_id': cl})
 
     out_patient_results_list += [box for b in in_patient_results_list for box in b if box['box_type'] == 'gt']
-    out_patient_results_list = [out_patient_results_list] # add dummy batch dimension 1 for 3D.
+    out_patient_results_list = [out_patient_results_list]  # add dummy batch dimension 1 for 3D.
 
     return [out_patient_results_list, pid]
-
 
 
 def weighted_box_clustering(dets, box_patch_id, thresh, n_ens):
@@ -737,7 +731,6 @@ def weighted_box_clustering(dets, box_patch_id, thresh, n_ens):
     return keep_scores, keep_coords
 
 
-
 def nms_2to3D(dets, thresh):
     """
     Merges 2D boxes to 3D cubes. Therefore, boxes of all slices are projected into one slices. An adaptation of Non-maximum surpression
@@ -804,7 +797,6 @@ def nms_2to3D(dets, thresh):
     return keep, keep_z
 
 
-
 def get_mirrored_patch_crops(patch_crops, org_img_shape):
     """
     apply 3 mirrror transformations (x-axis, y-axis, x&y-axis)
@@ -845,6 +837,3 @@ def get_mirrored_patch_crops(patch_crops, org_img_shape):
                                   ii[4], ii[5]] for ii in patch_crops])
 
     return mirrored_patch_crops
-
-
-

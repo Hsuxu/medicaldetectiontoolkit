@@ -28,7 +28,6 @@ from multiprocessing import Pool
 
 class Evaluator():
 
-
     def __init__(self, cf, logger, mode='test'):
         """
         :param mode: either 'val_sampling', 'val_patient' or 'test'. handles prediction lists of different forms.
@@ -36,7 +35,6 @@ class Evaluator():
         self.cf = cf
         self.logger = logger
         self.mode = mode
-
 
     def eval_losses(self, batch_res_dicts):
         if hasattr(self.cf, "losses_to_monitor"):
@@ -56,8 +54,7 @@ class Evaluator():
         df_list_type = []
         df_list_match_iou = []
 
-
-        if self.mode == 'train' or self.mode=='val_sampling':
+        if self.mode == 'train' or self.mode == 'val_sampling':
             # one pid per batch element
             # batch_size > 1, with varying patients across batch:
             # [[[results_0, ...], [pid_0, ...]], [[results_n, ...], [pid_n, ...]], ...]
@@ -112,11 +109,12 @@ class Evaluator():
                                 double_match_list = []
                                 for dg in double_match_gt_ixs:
                                     double_match_cand_ixs = match_cand_ixs[np.argwhere(match_gt_ixs == dg)]
-                                    keep_max.append(double_match_cand_ixs[np.argmax(b_cand_scores[double_match_cand_ixs])])
+                                    keep_max.append(
+                                        double_match_cand_ixs[np.argmax(b_cand_scores[double_match_cand_ixs])])
                                     double_match_list += [ii for ii in double_match_cand_ixs]
 
                                 fp_ixs = np.array([ii for ii in match_cand_ixs if
-                                                     (ii in double_match_list and ii not in keep_max)])
+                                                   (ii in double_match_list and ii not in keep_max)])
 
                                 match_cand_ixs = np.array([ii for ii in match_cand_ixs if ii not in fp_ixs])
 
@@ -145,8 +143,8 @@ class Evaluator():
                                 df_list_preds += [0] * non_match_gt_ixs.shape[0]
                                 df_list_labels += [1] * non_match_gt_ixs.shape[0]
                                 df_list_class_preds += [cl] * non_match_gt_ixs.shape[0]
-                                df_list_pids += [pid]  * non_match_gt_ixs.shape[0]
-                                df_list_type += ['det_fn']  * non_match_gt_ixs.shape[0]
+                                df_list_pids += [pid] * non_match_gt_ixs.shape[0]
+                                df_list_type += ['det_fn'] * non_match_gt_ixs.shape[0]
                         # only fp:
                         if not 0 in b_cand_boxes.shape and 0 in b_tar_boxes.shape:
                             df_list_preds += [ii for ii in b_cand_scores]
@@ -170,7 +168,7 @@ class Evaluator():
                         df_list_labels += [0] * 1
                         df_list_class_preds += [cl] * 1
                         df_list_pids += [pid] * 1
-                        df_list_type += ['patient_tn'] * 1 # true negative: no ground truth boxes, no detections.
+                        df_list_type += ['patient_tn'] * 1  # true negative: no ground truth boxes, no detections.
 
             df_list_match_iou += [match_iou] * (len(df_list_preds) - len(df_list_match_iou))
 
@@ -182,7 +180,6 @@ class Evaluator():
         self.test_df['det_type'] = df_list_type
         self.test_df['fold'] = self.cf.fold
         self.test_df['match_iou'] = df_list_match_iou
-
 
     def evaluate_predictions(self, results_list, monitor_metrics=None):
         """
@@ -231,7 +228,6 @@ class Evaluator():
             # return all_stats, updated monitor_metrics
             return self.return_metrics(monitor_metrics)
 
-
     def return_metrics(self, monitor_metrics=None):
         """
         calculates AP/AUC scores for internal dataframe. called directly from evaluate_predictions during training for monitoring,
@@ -249,7 +245,6 @@ class Evaluator():
         if monitor_metrics is not None:
             for l_name in self.epoch_losses:
                 monitor_metrics[l_name] = [self.epoch_losses[l_name]]
-
 
         df = self.test_df
 
@@ -283,7 +278,8 @@ class Evaluator():
                 # on patient level, aggregate predictions per patient (pid): The patient predicted score is the highest
                 # confidence prediction for this class. The patient class label is 1 if roi of this class exists in patient, else 0.
                 if score_level == 'patient':
-                    spec_df = cl_df.groupby(['pid'], as_index=False).agg({'class_label': 'max', 'pred_score': 'max', 'fold': 'first'})
+                    spec_df = cl_df.groupby(['pid'], as_index=False).agg(
+                        {'class_label': 'max', 'pred_score': 'max', 'fold': 'first'})
 
                     if len(spec_df.class_label.unique()) > 1:
                         stats_dict['auc'] = roc_auc_score(spec_df.class_label.tolist(), spec_df.pred_score.tolist())
@@ -293,8 +289,10 @@ class Evaluator():
                         stats_dict['roc'] = np.nan
 
                     if (spec_df.class_label == 1).any():
-                        stats_dict['ap'] = average_precision_score(spec_df.class_label.tolist(), spec_df.pred_score.tolist())
-                        stats_dict['prc'] = precision_recall_curve(spec_df.class_label.tolist(), spec_df.pred_score.tolist())
+                        stats_dict['ap'] = average_precision_score(spec_df.class_label.tolist(),
+                                                                   spec_df.pred_score.tolist())
+                        stats_dict['prc'] = precision_recall_curve(spec_df.class_label.tolist(),
+                                                                   spec_df.pred_score.tolist())
                     else:
                         stats_dict['ap'] = np.nan
                         stats_dict['prc'] = np.nan
@@ -308,14 +306,17 @@ class Evaluator():
                             if len(fold_df.class_label.unique()) > 1:
                                 aucs.append(roc_auc_score(fold_df.class_label.tolist(), fold_df.pred_score.tolist()))
                             if (fold_df.class_label == 1).any():
-                                aps.append(average_precision_score(fold_df.class_label.tolist(), fold_df.pred_score.tolist()))
+                                aps.append(
+                                    average_precision_score(fold_df.class_label.tolist(), fold_df.pred_score.tolist()))
                         stats_dict['mean_auc'] = np.mean(aucs)
                         stats_dict['mean_ap'] = np.mean(aps)
 
                 # fill new results into monitor_metrics dict. for simplicity, only one class (of interest) is monitored on patient level.
-                if monitor_metrics is not None and not (score_level == 'patient' and cl != self.cf.patient_class_of_interest):
+                if monitor_metrics is not None and not (
+                        score_level == 'patient' and cl != self.cf.patient_class_of_interest):
                     score_level_name = 'patient' if score_level == 'patient' else self.cf.class_dict[cl]
-                    monitor_metrics[score_level_name + '_ap'].append(stats_dict['ap'] if stats_dict['ap'] > 0 else np.nan)
+                    monitor_metrics[score_level_name + '_ap'].append(
+                        stats_dict['ap'] if stats_dict['ap'] > 0 else np.nan)
                     if score_level == 'patient':
                         monitor_metrics[score_level_name + '_auc'].append(
                             stats_dict['auc'] if stats_dict['auc'] > 0 else np.nan)
@@ -325,7 +326,8 @@ class Evaluator():
                         self.cf.plot_dir, 'pred_hist_{}_{}_{}_cl{}'.format(
                             self.cf.fold, 'val' if 'val' in self.mode else self.mode, score_level, cl))
                     type_list = None if score_level == 'patient' else spec_df.det_type.tolist()
-                    plotting.plot_prediction_hist(spec_df.class_label.tolist(), spec_df.pred_score.tolist(), type_list, out_filename)
+                    plotting.plot_prediction_hist(spec_df.class_label.tolist(), spec_df.pred_score.tolist(), type_list,
+                                                  out_filename)
 
                 all_stats.append(stats_dict)
 
@@ -337,12 +339,12 @@ class Evaluator():
                     aps = pool.map(get_roi_ap_from_df, mp_inputs, chunksize=1)
                     pool.close()
                     pool.join()
-                    self.logger.info('results from scanning over det_threshs:', [[i, j] for i, j in zip(conf_threshs, aps)])
+                    self.logger.info('results from scanning over det_threshs:',
+                                     [[i, j] for i, j in zip(conf_threshs, aps)])
 
         if self.cf.plot_stat_curves:
             out_filename = os.path.join(self.cf.plot_dir, '{}_{}_stat_curves'.format(self.cf.fold, self.mode))
             plotting.plot_stat_curves(all_stats, out_filename)
-
 
         # get average stats over foreground classes on roi level.
         avg_ap = np.mean([d['ap'] for d in all_stats if 'rois' in d['name']])
@@ -355,11 +357,11 @@ class Evaluator():
         # in small data sets, values of model_selection_criterion can be identical across epochs, wich breaks the
         # ranking of model_selector. Thus, pertube identical values by a neglectibale random term.
         for sc in self.cf.model_selection_criteria:
-            if 'val' in self.mode and monitor_metrics[sc].count(monitor_metrics[sc][-1]) > 1 and monitor_metrics[sc][-1] is not None:
+            if 'val' in self.mode and monitor_metrics[sc].count(monitor_metrics[sc][-1]) > 1 and monitor_metrics[sc][
+                -1] is not None:
                 monitor_metrics[sc][-1] += 1e-6 * np.random.rand()
 
         return all_stats, monitor_metrics
-
 
     def score_test_df(self, internal_df=True):
         """
@@ -401,9 +403,9 @@ class Evaluator():
                 with open(results_table_path, 'a') as handle2:
                     for s in stats:
                         handle2.write('\nAUC {:0.4f} (mu {:0.4f})  AP {:0.4f} (mu {:0.4f})  {} {}'
-                                      .format(s['auc'], s['mean_auc'], s['ap'], s['mean_ap'], s['name'], self.cf.exp_dir.split('/')[-1]))
+                                      .format(s['auc'], s['mean_auc'], s['ap'], s['mean_ap'], s['name'],
+                                              self.cf.exp_dir.split('/')[-1]))
                     handle2.write('\n')
-
 
 
 def get_roi_ap_from_df(inputs):
@@ -424,10 +426,11 @@ def get_roi_ap_from_df(inputs):
             for pid in pids_list:
                 pid_df = iou_df[iou_df.pid == pid]
                 all_p = len(pid_df[pid_df.class_label == 1])
-                pid_df = pid_df[(pid_df.det_type == 'det_fp') | (pid_df.det_type == 'det_tp')].sort_values('pred_score', ascending=False)
+                pid_df = pid_df[(pid_df.det_type == 'det_fp') | (pid_df.det_type == 'det_tp')].sort_values('pred_score',
+                                                                                                           ascending=False)
                 pid_df = pid_df[pid_df.pred_score > det_thresh]
-                if (len(pid_df) ==0 and all_p == 0):
-                   pass
+                if (len(pid_df) == 0 and all_p == 0):
+                    pass
                 elif (len(pid_df) > 0 and all_p == 0):
                     aps.append(0)
                 else:
@@ -439,12 +442,12 @@ def get_roi_ap_from_df(inputs):
         for match_iou in df.match_iou.unique():
             iou_df = df[df.match_iou == match_iou]
             all_p = len(iou_df[iou_df.class_label == 1])
-            iou_df = iou_df[(iou_df.det_type == 'det_fp') | (iou_df.det_type == 'det_tp')].sort_values('pred_score', ascending=False)
+            iou_df = iou_df[(iou_df.det_type == 'det_fp') | (iou_df.det_type == 'det_tp')].sort_values('pred_score',
+                                                                                                       ascending=False)
             iou_df = iou_df[iou_df.pred_score > det_thresh]
             if all_p > 0:
                 aps.append(compute_roi_ap(iou_df, all_p))
         return np.mean(aps)
-
 
 
 def compute_roi_ap(df, all_p):
@@ -456,7 +459,7 @@ def compute_roi_ap(df, all_p):
     """
     tp = df.class_label.values
     fp = (tp == 0) * 1
-    #recall thresholds, where precision will be measured
+    # recall thresholds, where precision will be measured
     R = np.linspace(.0, 1, 101, endpoint=True)
     tp_sum = np.cumsum(tp)
     fp_sum = np.cumsum(fp)
@@ -474,7 +477,7 @@ def compute_roi_ap(df, all_p):
         if pr[i] > pr[i - 1]:
             pr[i - 1] = pr[i]
 
-    #discretize empiric recall steps with given bins.
+    # discretize empiric recall steps with given bins.
     inds = np.searchsorted(rc, R, side='left')
     try:
         for ri, pi in enumerate(inds):

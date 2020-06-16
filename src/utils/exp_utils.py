@@ -13,23 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-from typing import Iterable, Tuple, Any, Union
-import os, sys
-import subprocess
-from multiprocessing import Process
-
 import importlib.util
-import pickle
-
 import logging
+import os
+import pickle
+import subprocess
+import sys
+from collections import OrderedDict
+from multiprocessing import Process
+from typing import Iterable, Tuple, Any, Union
+
+import numpy as np
+import pandas as pd
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from collections import OrderedDict
-import numpy as np
-import torch
-import pandas as pd
 
-def split_off_process(target, *args, daemon: bool=False, **kwargs):
+def split_off_process(target, *args, daemon: bool = False, **kwargs):
     """Start a process that won't block parent script.
     No join(), no return value. If daemon=False: before parent exits, it waits for this to finish.
     :param target: the target function of the process.
@@ -41,7 +41,8 @@ def split_off_process(target, *args, daemon: bool=False, **kwargs):
     p.start()
     return p
 
-def get_formatted_duration(seconds: float, format: str="hms") -> str:
+
+def get_formatted_duration(seconds: float, format: str = "hms") -> str:
     """Format a time in seconds.
     :param format: "hms" for hours mins secs or "ms" for min secs.
     """
@@ -55,11 +56,12 @@ def get_formatted_duration(seconds: float, format: str="hms") -> str:
         raise Exception("Format {} not available, only 'hms' or 'ms'".format(format))
     return t
 
+
 class CombinedLogger(object):
     """Combine console and tensorboard logger and record system metrics.
     """
 
-    def __init__(self, name: str, log_dir: str, server_env: bool=True, fold: Union[int, str]="all"):
+    def __init__(self, name: str, log_dir: str, server_env: bool = True, fold: Union[int, str] = "all"):
         self.pylogger = logging.getLogger(name)
         self.tboard = SummaryWriter(log_dir=os.path.join(log_dir, "tboard"))
         self.log_dir = log_dir
@@ -67,7 +69,7 @@ class CombinedLogger(object):
         self.server_env = server_env
 
         self.pylogger.setLevel(logging.DEBUG)
-        self.log_file = os.path.join(log_dir, "fold_"+self.fold, 'exec.log')
+        self.log_file = os.path.join(log_dir, "fold_" + self.fold, 'exec.log')
         os.makedirs(os.path.dirname(self.log_file), exist_ok=True)
         self.pylogger.addHandler(logging.FileHandler(self.log_file))
         if not server_env:
@@ -86,11 +88,11 @@ class CombinedLogger(object):
                 return getattr(obj, attr)
         print("logger attr not found")
 
-    def set_logfile(self, fold: Union[int, str, None]=None, log_file: Union[str, None]=None):
+    def set_logfile(self, fold: Union[int, str, None] = None, log_file: Union[str, None] = None):
         if fold is not None:
             self.fold = str(fold)
         if log_file is None:
-            self.log_file = os.path.join(self.log_dir, "fold_"+self.fold, 'exec.log')
+            self.log_file = os.path.join(self.log_dir, "fold_" + self.fold, 'exec.log')
         else:
             self.log_file = log_file
         os.makedirs(os.path.dirname(self.log_file), exist_ok=True)
@@ -140,10 +142,10 @@ class CombinedLogger(object):
         self.tboard.flush()
         # close somehow prevents main script from exiting
         # maybe revise this issue in a later pytorch version
-        #self.tboard.close()
+        # self.tboard.close()
 
 
-def get_logger(exp_dir: str, server_env: bool=False) -> CombinedLogger:
+def get_logger(exp_dir: str, server_env: bool = False) -> CombinedLogger:
     """
     creates logger instance. writing out info to file, to terminal and to tensorboard.
     :param exp_dir: experiment directory, where exec.log file is stored.
@@ -203,7 +205,6 @@ def prep_exp(dataset_path, exp_path, server_env, use_stored_settings=True, is_tr
         cf.model_path = os.path.join(exp_path, 'model.py')
         cf.backbone_path = os.path.join(exp_path, 'backbone.py')
 
-
     cf.exp_dir = exp_path
     cf.test_dir = os.path.join(cf.exp_dir, 'test')
     cf.plot_dir = os.path.join(cf.exp_dir, 'plots')
@@ -215,7 +216,6 @@ def prep_exp(dataset_path, exp_path, server_env, use_stored_settings=True, is_tr
     cf.created_fold_id_pickle = False
 
     return cf
-
 
 
 def import_module(name: str, path: str):
@@ -245,7 +245,9 @@ def set_params_flag(module: torch.nn.Module, flag: Tuple[str, Any], check_overwr
         setattr(param, flag[0], flag[1])
     return module
 
-def parse_params_for_optim(net: torch.nn.Module, weight_decay: float = 0., exclude_from_wd: Iterable = ("norm",)) -> list:
+
+def parse_params_for_optim(net: torch.nn.Module, weight_decay: float = 0.,
+                           exclude_from_wd: Iterable = ("norm",)) -> list:
     """Split network parameters into weight-decay dependent groups for the optimizer.
     :param net: network.
     :param weight_decay: weight decay value for the parameters that it is applied to. excluded parameters will have
@@ -288,10 +290,11 @@ def parse_params_for_optim(net: torch.nn.Module, weight_decay: float = 0., exclu
     orig_ps = sum(p.numel() for p in net.parameters())
     with_ps = sum(p.numel() for p in with_dec)
     wo_ps = sum(p.numel() for p in no_dec)
-    assert orig_ps == with_ps + wo_ps, "orig n parameters {} unequals sum of with wd {} and w/o wd {}."\
+    assert orig_ps == with_ps + wo_ps, "orig n parameters {} unequals sum of with wd {} and w/o wd {}." \
         .format(orig_ps, with_ps, wo_ps)
 
-    groups = [{'params': gr, 'weight_decay': wd} for (gr, wd) in [(no_dec, 0.), (with_dec, weight_decay)] if len(gr)>0]
+    groups = [{'params': gr, 'weight_decay': wd} for (gr, wd) in [(no_dec, 0.), (with_dec, weight_decay)] if
+              len(gr) > 0]
     return groups
 
 
@@ -311,10 +314,12 @@ class ModelSelector:
                             monitor_metrics: dict, epoch: int):
 
         # take the mean over all selection criteria in each epoch
-        non_nan_scores = np.mean(np.array([[0 if (ii is None or np.isnan(ii)) else ii for ii in monitor_metrics['val'][sc]] for sc in self.cf.model_selection_criteria]), 0)
+        non_nan_scores = np.mean(np.array(
+            [[0 if (ii is None or np.isnan(ii)) else ii for ii in monitor_metrics['val'][sc]] for sc in
+             self.cf.model_selection_criteria]), 0)
         epochs_scores = [ii for ii in non_nan_scores[1:]]
         # ranking of epochs according to model_selection_criterion
-        epoch_ranking = np.argsort(epochs_scores, kind="stable")[::-1] + 1 #epochs start at 1
+        epoch_ranking = np.argsort(epochs_scores, kind="stable")[::-1] + 1  # epochs start at 1
         # if set in configs, epochs < min_save_thresh are discarded from saving process.
         epoch_ranking = epoch_ranking[epoch_ranking >= self.cf.min_save_thresh]
 
@@ -337,7 +342,8 @@ class ModelSelector:
             # delete params of the epoch that just fell out of the top-k epochs.
             for se in [int(ii.split('_')[0]) for ii in os.listdir(self.cf.fold_dir) if 'best_checkpoint' in ii]:
                 if se in epoch_ranking[self.cf.save_n_models:]:
-                    subprocess.call('rm -rf {}'.format(os.path.join(self.cf.fold_dir, '{}_best_checkpoint'.format(se))), shell=True)
+                    subprocess.call('rm -rf {}'.format(os.path.join(self.cf.fold_dir, '{}_best_checkpoint'.format(se))),
+                                    shell=True)
                     self.logger.info('deleting epoch {} at rank {}'.format(se, np.argwhere(epoch_ranking == se)))
 
         state = {
@@ -356,9 +362,7 @@ class ModelSelector:
             pickle.dump(monitor_metrics, handle)
 
 
-
 def load_checkpoint(checkpoint_path: str, net: torch.nn.Module, optimizer: torch.optim.Optimizer) -> Tuple:
-
     checkpoint = torch.load(os.path.join(checkpoint_path, 'params.pth'))
     net.load_state_dict(checkpoint['state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer'])
@@ -366,7 +370,6 @@ def load_checkpoint(checkpoint_path: str, net: torch.nn.Module, optimizer: torch
         monitor_metrics = pickle.load(handle)
     starting_epoch = checkpoint['epoch'] + 1
     return starting_epoch, net, optimizer, monitor_metrics
-
 
 
 def prepare_monitoring(cf):
@@ -392,7 +395,6 @@ def prepare_monitoring(cf):
     return metrics
 
 
-
 def create_csv_output(results_list, cf, logger):
     """
     Write out test set predictions to .csv file. output format is one line per prediction:
@@ -403,13 +405,13 @@ def create_csv_output(results_list, cf, logger):
     """
 
     logger.info('creating csv output file at {}'.format(os.path.join(cf.test_dir, 'results.csv')))
-    predictions_df = pd.DataFrame(columns = ['patientID', 'predictionID', 'coords', 'score', 'pred_classID'])
+    predictions_df = pd.DataFrame(columns=['patientID', 'predictionID', 'coords', 'score', 'pred_classID'])
     for r in results_list:
 
         pid = r[1]
 
-        #optionally load resampling info from preprocessing to match output predictions with raw data.
-        #with open(os.path.join(cf.exp_dir, 'test_resampling_info', pid), 'rb') as handle:
+        # optionally load resampling info from preprocessing to match output predictions with raw data.
+        # with open(os.path.join(cf.exp_dir, 'test_resampling_info', pid), 'rb') as handle:
         #    resampling_info = pickle.load(handle)
 
         for bix, box in enumerate(r[0][0]):
@@ -421,13 +423,13 @@ def create_csv_output(results_list, cf, logger):
             pred_class_id = box['box_pred_class_id']
             out_coords = []
             if score >= cf.min_det_thresh:
-                out_coords.append(coords[0]) #* resampling_info['scale'][0])
-                out_coords.append(coords[1]) #* resampling_info['scale'][1])
-                out_coords.append(coords[2]) #* resampling_info['scale'][0])
-                out_coords.append(coords[3]) #* resampling_info['scale'][1])
+                out_coords.append(coords[0])  # * resampling_info['scale'][0])
+                out_coords.append(coords[1])  # * resampling_info['scale'][1])
+                out_coords.append(coords[2])  # * resampling_info['scale'][0])
+                out_coords.append(coords[3])  # * resampling_info['scale'][1])
                 if len(coords) > 4:
-                    out_coords.append(coords[4]) #* resampling_info['scale'][2] + resampling_info['z_crop'])
-                    out_coords.append(coords[5]) #* resampling_info['scale'][2] + resampling_info['z_crop'])
+                    out_coords.append(coords[4])  # * resampling_info['scale'][2] + resampling_info['z_crop'])
+                    out_coords.append(coords[5])  # * resampling_info['scale'][2] + resampling_info['z_crop'])
 
                 predictions_df.loc[len(predictions_df)] = [pid, bix, out_coords, score, pred_class_id]
     try:
@@ -435,7 +437,6 @@ def create_csv_output(results_list, cf, logger):
     except:
         fold = 'hold_out'
     predictions_df.to_csv(os.path.join(cf.exp_dir, 'results_{}.csv'.format(fold)), index=False)
-
 
 
 class _AnsiColorizer(object):
@@ -487,9 +488,7 @@ class _AnsiColorizer(object):
         self.stream.write('\x1b[%sm%s\x1b[0m' % (color, text))
 
 
-
 class ColorHandler(logging.StreamHandler):
-
 
     def __init__(self, stream=sys.stdout):
         super(ColorHandler, self).__init__(_AnsiColorizer(stream))
@@ -503,4 +502,3 @@ class ColorHandler(logging.StreamHandler):
         }
         color = msg_colors.get(record.levelno, "blue")
         self.stream.write(record.msg + "\n", color)
-

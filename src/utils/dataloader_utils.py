@@ -19,7 +19,6 @@ import os
 from multiprocessing import Pool
 
 
-
 def get_class_balanced_patients(class_targets, batch_size, num_classes, slack_factor=0.1):
     '''
     samples patients towards equilibrium of classes on a roi-level. For highly imbalanced datasets, this might be a too strong requirement.
@@ -37,14 +36,15 @@ def get_class_balanced_patients(class_targets, batch_size, num_classes, slack_fa
 
         keep_looking = True
         while keep_looking:
-            #choose a random patient.
+            # choose a random patient.
             cand = np.random.choice(len(class_targets), 1)[0]
             # check the least occuring class among this patient's rois.
             tmp_weakest_class = np.argmin([class_targets[cand].count(ii) for ii in range(num_classes)])
             # if current batch already bigger than the slack_factor ratio, then
             # check that weakest class in this patient is not the weakest in current batch (since needs to be boosted)
             # also that at least one roi of this patient belongs to weakest class. If True, keep patient, else keep looking.
-            if (tmp_weakest_class != weakest_class and class_targets[cand].count(weakest_class) > 0) or ix < int(batch_size * slack_factor):
+            if (tmp_weakest_class != weakest_class and class_targets[cand].count(weakest_class) > 0) or ix < int(
+                    batch_size * slack_factor):
                 keep_looking = False
 
         for c in range(num_classes):
@@ -53,7 +53,6 @@ def get_class_balanced_patients(class_targets, batch_size, num_classes, slack_fa
         batch_ixs.append(cand)
 
     return batch_ixs
-
 
 
 class fold_generator:
@@ -66,6 +65,7 @@ class fold_generator:
     This creates straight-forward train-val splits.
     :returns names list: list of len n_splits. each element is a list of len 3 for train_ix, val_ix, test_ix.
     """
+
     def __init__(self, seed, n_splits, len_data):
         """
         :param seed: Random seed for splits.
@@ -102,21 +102,20 @@ class fold_generator:
     def new_fold(self):
 
         slicer = self.slicer
-        if self.fold < self.missing :
+        if self.fold < self.missing:
             slicer = self.slicer - 1
 
         temp = self.te_ix
 
         # catch exception mod == 1: test set collects 1+ data since walk through both roudned up splits.
         # account for by reducing last fold split by 1.
-        if self.fold == self.n_splits-2 and self.mod ==1:
+        if self.fold == self.n_splits - 2 and self.mod == 1:
             temp += self.val_ix[-1:]
             self.val_ix = self.val_ix[:-1]
 
         self.te_ix = self.val_ix
         self.val_ix = self.tr_ix[:slicer]
         self.tr_ix = self.tr_ix[slicer:] + temp
-
 
     def get_fold_names(self):
         names_list = []
@@ -134,7 +133,6 @@ class fold_generator:
             self.fold += 1
 
         return names_list
-
 
 
 def get_patch_crop_coords(img, patch_size, min_overlap=30):
@@ -178,7 +176,6 @@ def get_patch_crop_coords(img, patch_size, min_overlap=30):
             else:
                 coords_mesh_grid.append([ymin, ymax, xmin, xmax])
     return np.array(coords_mesh_grid).astype(int)
-
 
 
 def pad_nd_image(image, new_shape=None, mode="edge", kwargs=None, return_slicer=False, shape_must_be_divisible_by=None):
@@ -229,12 +226,14 @@ def pad_nd_image(image, new_shape=None, mode="edge", kwargs=None, return_slicer=
             if new_shape[i] % shape_must_be_divisible_by[i] == 0:
                 new_shape[i] -= shape_must_be_divisible_by[i]
 
-        new_shape = np.array([new_shape[i] + shape_must_be_divisible_by[i] - new_shape[i] % shape_must_be_divisible_by[i] for i in range(len(new_shape))])
+        new_shape = np.array(
+            [new_shape[i] + shape_must_be_divisible_by[i] - new_shape[i] % shape_must_be_divisible_by[i] for i in
+             range(len(new_shape))])
 
     difference = new_shape - old_shape
     pad_below = difference // 2
     pad_above = difference // 2 + difference % 2
-    pad_list = [[0, 0]]*num_axes_nopad + list([list(i) for i in zip(pad_below, pad_above)])
+    pad_list = [[0, 0]] * num_axes_nopad + list([list(i) for i in zip(pad_below, pad_above)])
     res = np.pad(image, pad_list, mode, **kwargs)
     if not return_slicer:
         return res
