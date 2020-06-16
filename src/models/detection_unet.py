@@ -23,8 +23,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from scipy.ndimage.measurements import label as lb
 import numpy as np
-import src.utils.exp_utils as utils
-import src.utils.model_utils as mutils
+from ..utils import exp_utils as utils
+from ..utils import model_utils as mutils
 
 
 class net(nn.Module):
@@ -46,7 +46,6 @@ class net(nn.Module):
             mutils.initialize_weights(self)
         else:
             logger.info("using default pytorch weight init")
-
 
     def forward(self, x):
         """
@@ -82,7 +81,6 @@ class net(nn.Module):
             out_max_scores.append(max_scores)
         return seg_logits, out_box_coords, out_max_scores
 
-
     def train_forward(self, batch, **kwargs):
         """
         train method (also used for validation monitoring). wrapper around forward pass of network. prepares input data
@@ -112,12 +110,13 @@ class net(nn.Module):
                                                            'box_score': max_scores[cix][bix][rix],
                                                            'box_pred_class_id': cix + 1,  # add 0 for background.
                                                            'box_type': 'det'})
-
-
+        if "roi_labels" in batch.keys():
+            raise Exception("Key for roi-wise class targets changed in v0.1.0 from 'roi_labels' to 'class_target'.\n"
+                            "If you use DKFZ's batchgenerators, please make sure you run version >= 0.20.1.")
         for bix in range(img.shape[0]):
             for tix in range(len(batch['bb_target'][bix])):
                 results_dict['boxes'][bix].append({'box_coords': batch['bb_target'][bix][tix],
-                                                   'box_label': batch['roi_labels'][bix][tix],
+                                                   'box_label': batch['class_target'][bix][tix],
                                                    'box_type': 'gt'})
 
         # compute segmentation loss as either weighted cross entropy, dice loss, or the sum of both.
@@ -134,9 +133,7 @@ class net(nn.Module):
         results_dict['monitor_values'] = {'loss': loss.item()}
         results_dict['logger_string'] = "loss: {0:.2f}".format(loss.item())
 
-
         return results_dict
-
 
     def test_forward(self, batch, **kwargs):
         """
@@ -164,9 +161,9 @@ class net(nn.Module):
                                                            'box_pred_class_id': cix + 1,  # add 0 for background.
                                                            'box_type': 'det'})
 
-        results_dict['seg_preds'] = np.argmax(F.softmax(seg_logits, 1).cpu().data.numpy(), 1)[:, np.newaxis].astype('uint8')
+        results_dict['seg_preds'] = np.argmax(F.softmax(seg_logits, 1).cpu().data.numpy(), 1)[:, np.newaxis].astype(
+            'uint8')
         return results_dict
-
 
 
 def get_coords(binary_mask, n_components, dim):
@@ -197,7 +194,7 @@ def get_coords(binary_mask, n_components, dim):
                 roi_coords = [np.min(mask_ixs[:, 0]) - 1, np.min(mask_ixs[:, 1]) - 1, np.max(mask_ixs[:, 0]) + 1,
                               np.max(mask_ixs[:, 1]) + 1]
                 if dim == 3:
-                    roi_coords += [np.min(mask_ixs[:, 2]), np.max(mask_ixs[:, 2])+1]
+                    roi_coords += [np.min(mask_ixs[:, 2]), np.max(mask_ixs[:, 2]) + 1]
                 p_coords.append(roi_coords)
 
             p_coords = np.array(p_coords)
@@ -211,4 +208,3 @@ def get_coords(binary_mask, n_components, dim):
         batch_coords.append(p_coords)
         batch_components.append(p_components)
     return batch_coords, batch_components
-
