@@ -22,8 +22,10 @@ def parse_requirements(filename, exclude=[]):
     lineiter = (line.strip() for line in open(filename))
     return [line for line in lineiter if line and not line.startswith("#") and not line.split("==")[0] in exclude]
 
+
 def pip_install(item):
     subprocess.check_call([sys.executable, "-m", "pip", "install", item])
+
 
 def install_custom_ext(setup_path):
     try:
@@ -31,15 +33,14 @@ def install_custom_ext(setup_path):
     except Exception as e:
         print("Could not install custom extension {} from source due to Error:\n{}\n".format(path, e) +
               "Trying to install from pre-compiled wheel.")
-        dist_path = setup_path+"/dist"
+        dist_path = setup_path + "/dist"
         wheel_file = [fn for fn in os.listdir(dist_path) if fn.endswith(".whl")][0]
         pip_install(os.path.join(dist_path, wheel_file))
+
 
 def clean():
     """Custom clean command to tidy up the project root."""
     os.system('rm -vrf ./build ./dist ./*.pyc ./*.tgz ./*.egg-info')
-
-
 
 
 if __name__ == "__main__":
@@ -63,7 +64,7 @@ if __name__ == "__main__":
           install_requires=install_reqs,
           )
 
-    custom_exts =  ["custom_extensions/nms", "custom_extensions/roi_align/2D", "custom_extensions/roi_align/3D"]
+    custom_exts = ["src/extension/nms", "src/extension/roi_align/2D", "src/extension/roi_align/3D"]
     for path in custom_exts:
         try:
             install_custom_ext(path)
